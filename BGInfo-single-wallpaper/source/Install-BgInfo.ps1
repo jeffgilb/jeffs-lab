@@ -105,10 +105,6 @@ try {
     # ***** -----------------------------------------------***** 
     # ***** -----------------------------------------------***** 
     
-    # Add a timestamp query parameter to bypass cached wallpaper downloads.
-        $DownloadWallpaperUrl = "${WallpaperBaseUrl}?cb=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
-        $Wallpaper = Join-Path $InstallDir "wallpaper.jpg"
-
     Write-Log "Starting BGInfo setup process."
 
     #-----------------------------------------------
@@ -162,7 +158,10 @@ try {
     #-----------------------------------------------
     # Download hosted wallpaper
     #-----------------------------------------------
-
+    # Add a timestamp query parameter to bypass cached wallpaper downloads.
+        $DownloadWallpaperUrl = "${WallpaperBaseUrl}?cb=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+        $Wallpaper = Join-Path $InstallDir "wallpaper.jpg"
+        
     Invoke-WebRequest `
         -Uri $DownloadWallpaperUrl `
         -OutFile $Wallpaper `

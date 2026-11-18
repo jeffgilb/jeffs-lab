@@ -7,3 +7,4 @@ Install:       Setup-BgInfo.ps1
 Uninstall:     Uninstall-BgInfo.ps1
 Detection:     %PUBLIC%\BGInfo
                Bginfo64.exe
+Information URL: https://www.jeffgilb.com/one-wallpaper-url-two-experiences-making-bginfo-play-nice-with-the-personalization-csp/
