@@ -1,0 +1,9 @@
+ProductName:   Branding - BGInfo Wallpaper
+Description:   Downloads and installs the Microsoft Sysinternals BGInfo utility, deploys the BGInfo configuration and corporate wallpaper, and creates a scheduled task to refresh the wallpaper and apply BGInfo at user logon.
+Manufacturer:  Jeff's Lab
+ProductVersion: 1.0.0
+Information:   
+Install:       Setup-BgInfo.ps1
+Uninstall:     Uninstall-BgInfo.ps1
+Detection:     %PUBLIC%\BGInfo
+               Bginfo64.exe

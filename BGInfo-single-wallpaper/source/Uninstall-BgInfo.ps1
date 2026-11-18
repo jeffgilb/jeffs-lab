@@ -68,14 +68,13 @@ $logFile = "$env:Root\Logs\BgInfo-Setup.log"
 
 # Ensure log directory exists
 $logDir = Split-Path -Path $logFile -Parent
-
 if (-not (Test-Path -LiteralPath $logDir)) {
     New-Item -Path $logDir -ItemType Directory -Force | Out-Null
 }
 
 $InteractiveLogging = $true
 
-$InstallDir = "$env:ProgramData\BGInfo"
+$InstallDir = Join-Path $env:PUBLIC 'BGInfo'
 $TaskName = "Apply BGInfo"
 $TaskPath = "\"
 

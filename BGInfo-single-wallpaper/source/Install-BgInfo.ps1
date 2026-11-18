@@ -16,7 +16,7 @@
     BGInfo runs in the logged-on user's context through a scheduled task.
 
     Install Path:
-        %ProgramData%\BGInfo
+        $env:PUBLIC\BGInfo
 
     Log:
         %Root%\Logs\BgInfo-Setup.log
@@ -85,51 +85,58 @@ function Write-Log {
 }
 
 #Requires -RunAsAdministrator
-
-#----------------------------------------------------------------------------------------------
-#----------------------------------------------------------------------------------------------
-
-#***** UPDATE THIS TO MATCH THE SAME .JPG URL YOU USE IF YOU'RE USING THE PERSONALIZATION CSP POLICY *****
-
-$WallpaperUrl = "https://github.com/jeffgilb/jeffs-lab/blob/main/media/img0.jpg?raw=true"
-
-#----------------------------------------------------------------------------------------------
-#----------------------------------------------------------------------------------------------
-
 $ErrorActionPreference = "Stop"
 
+$InteractiveLogging = $true
 $logFile = "$env:Root\Logs\BgInfo-Setup.log"
 
-# Ensure log directory exists
-$logDir = Split-Path -Path $logFile -Parent
-
-if (-not (Test-Path -LiteralPath $logDir)) {
-    New-Item -Path $logDir -ItemType Directory -Force | Out-Null
-}
-
-$InteractiveLogging 	= $true
-$InstallDir 		= "$env:ProgramData\BGInfo"
-$DownloadUrl 		= "https://download.sysinternals.com/files/BGInfo.zip"
-$TempRoot 		= Join-Path $env:TEMP "BGInfoInstall"
-$ZipFile  		= Join-Path $TempRoot "BGInfo.zip"
-$Wallpaper 		= Join-Path $InstallDir "wallpaper.jpg"
-$TaskName 		= "Apply BGInfo"
 
 try {
+    
+    #-----------------------------------------------
+    # Provide the URL for the high-resolution hosted wallpaper .jpg image used by BGInfo (i.e. https://<host>/path/img0.jpg).
+    # Update wallpaper.bgi to modify what is displayed in the desktop overlay.
+    # ***** THE WALLPAPER BASE URL IS IS THE ONLY THING YOU NEED TO MODIFY IN THIS SCRIPT *****
+    # ***** -----------------------------------------------***** 
+    # ***** -----------------------------------------------***** 
+
+    $WallpaperBaseUrl = 'https://www.jeffgilb.com/jeffslab-media/img0.jpg'
+
+    # ***** -----------------------------------------------***** 
+    # ***** -----------------------------------------------***** 
+    
+    # Add a timestamp query parameter to bypass cached wallpaper downloads.
+        $DownloadWallpaperUrl = "${WallpaperBaseUrl}?cb=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+        $Wallpaper = Join-Path $InstallDir "wallpaper.jpg"
 
     Write-Log "Starting BGInfo setup process."
+
     #-----------------------------------------------
     # Create directories
     #-----------------------------------------------
+    # Ensure log directory exists
+        $logDir = Split-Path -Path $logFile -Parent
+        if (-not (Test-Path -LiteralPath $logDir)) {
+            New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+        }
+    
+    # Ensure installation directory exists
+        $InstallDir = Join-Path $env:PUBLIC 'BGInfo'
+        if (-not (Test-Path -LiteralPath $InstallDir)) {
+            New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null
+        }
 
-    New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null
-    Write-Log "Created installation directory: $InstallDir"
-    New-Item -Path $TempRoot -ItemType Directory -Force | Out-Null
-    Write-Log "Created temporary directory: $TempRoot"
+    # Ensure temp directory exists
+        $TempRoot = Join-Path $env:TEMP "BGInfoInstall"
+        if (-not (Test-Path -LiteralPath $TempRoot)) {
+            New-Item -Path $TempRoot -ItemType Directory -Force | Out-Null
+        }
 
     #-----------------------------------------------
     # Download official Microsoft Sysinternals package
     #-----------------------------------------------
+    $DownloadUrl = "https://download.sysinternals.com/files/BGInfo.zip"
+    $ZipFile  = Join-Path $TempRoot "BGInfo.zip"
 
     Invoke-WebRequest `
         -Uri $DownloadUrl `
@@ -157,12 +164,12 @@ try {
     #-----------------------------------------------
 
     Invoke-WebRequest `
-        -Uri $WallpaperUrl `
+        -Uri $DownloadWallpaperUrl `
         -OutFile $Wallpaper `
         -UseBasicParsing `
         -TimeoutSec 30 `
         -ErrorAction Stop
-    Write-Log "Downloaded wallpaper from $WallpaperUrl to $Wallpaper"
+    Write-Log "Downloaded wallpaper from $DownloadWallpaperUrl to $Wallpaper"
 
     #-----------------------------------------------
     # Copy application files
@@ -180,18 +187,6 @@ try {
             -Force
         Write-Log "Copied $File to $InstallDir"
     }
-
-    #-----------------------------------------------
-    # Standard users need to overwrite only
-    # the wallpaper source image
-    # S-1-5-32-545 = BUILTIN\Users
-    #-----------------------------------------------
-
-    & icacls.exe `
-        "$InstallDir\wallpaper.jpg" `
-        /grant '*S-1-5-32-545:(M)' | Out-Null
-    Write-Log "Granted modify permissions to BUILTIN\Users for $InstallDir\wallpaper.jpg so they can update the wallpaper if it changes"
-
     
     #-----------------------------------------------
     # Create Apply-BGInfo.ps1
@@ -200,13 +195,13 @@ try {
     $ApplyScript = @'
 $ErrorActionPreference = "Stop"
 
-$BgInfoRoot = "$env:ProgramData\BGInfo"
+$BgInfoRoot = "$env:PUBLIC\BGInfo"
 
 $BgInfo    = "$BgInfoRoot\Bginfo64.exe"
 $Config    = "$BgInfoRoot\wallpaper.bgi"
 $Wallpaper = "$BgInfoRoot\wallpaper.jpg"
 
-$WallpaperUrl = @@WALLPAPER_URL@@
+$WallpaperUrl = "@@WALLPAPER_BASE_URL@@?cb=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 
 $TempImage = Join-Path `
     $env:TEMP `
@@ -266,6 +261,12 @@ try {
             -Path $TempImage `
             -Destination $Wallpaper `
             -Force
+
+        Write-Output "Corporate wallpaper updated."
+    }
+    else {
+
+        Write-Output "Corporate wallpaper is current."
     }
 
 }
@@ -309,8 +310,8 @@ else {
 }
 '@
 
-    $QuotedWallpaperUrl = "'" + $WallpaperUrl.Replace("'", "''") + "'"
-    $ApplyScript = $ApplyScript.Replace("@@WALLPAPER_URL@@", $QuotedWallpaperUrl)
+    $EscapedWallpaperBaseUrl = $WallpaperBaseUrl.Replace('"', '`"')
+    $ApplyScript = $ApplyScript.Replace("@@WALLPAPER_BASE_URL@@", $EscapedWallpaperBaseUrl)
 
     Set-Content `
         -LiteralPath "$InstallDir\Apply-BGInfo.ps1" `
@@ -353,7 +354,7 @@ else {
     #-----------------------------------------------
     # Register / replace task
     #-----------------------------------------------
-
+    $TaskName = "Apply BGInfo"
     Register-ScheduledTask `
         -TaskPath "\" `
         -TaskName $TaskName `
